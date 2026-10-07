@@ -34,6 +34,7 @@
 #include "qemu/log.h"
 #include "system/runstate.h"
 #include "qemu/cutils.h"
+#include "mane/mane.h"
 
 #ifdef CONFIG_LINUX
 #include <sys/prctl.h>
@@ -54,9 +55,21 @@ static void termsig_handler(int signal, siginfo_t *info, void *c)
     qemu_system_killed(info->si_signo, info->si_pid);
 }
 
+/*
+ * Set by mane_qemu_run() (system/mane.c). Defined here because this file is
+ * also linked into qemu-nbd and qemu-storage-daemon, which do not have
+ * system/mane.c.
+ */
+bool mane_embedded;
+
 void os_setup_signal_handling(void)
 {
     struct sigaction act;
+
+    /* Inside MaNE, the host process owns SIGINT, SIGHUP and SIGTERM. */
+    if (mane_embedded) {
+        return;
+    }
 
     memset(&act, 0, sizeof(act));
     act.sa_sigaction = termsig_handler;

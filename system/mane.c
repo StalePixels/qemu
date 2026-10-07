@@ -11,8 +11,6 @@
 #include "system/system.h"
 #include "mane/mane.h"
 
-bool mane_embedded;
-
 int mane_qemu_run(int argc, char **argv)
 {
     int status;
