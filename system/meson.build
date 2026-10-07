@@ -14,6 +14,7 @@ system_ss.add(files(
   'exit-with-parent.c',
   'globals.c',
   'ioport.c',
+  'mane.c',
   'ram-block-attributes.c',
   'memory_mapping.c',
   'memory.c',
