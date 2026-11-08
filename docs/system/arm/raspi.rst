@@ -36,6 +36,7 @@ Implemented devices
  * VideoCore firmware (property)
  * Peripheral SPI controller (SPI)
  * Broadcom Serial Controller (I2C)
+ * PCM / I2S audio interface (PCM)
 
 Missing devices
 ---------------

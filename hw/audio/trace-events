@@ -61,3 +61,16 @@ virtio_snd_handle_event(void) "event queue callback called"
 virtio_snd_pcm_stream_flush(uint32_t stream) "flushing stream %"PRIu32
 virtio_snd_handle_tx_xfer(void) "tx queue callback called"
 virtio_snd_handle_rx_xfer(void) "rx queue callback called"
+
+# bcm2835_i2s.c
+bcm2835_i2s_read(uint64_t offset, uint32_t value) "offset 0x%02" PRIx64 " value 0x%08x"
+bcm2835_i2s_write(uint64_t offset, uint64_t value) "offset 0x%02" PRIx64 " value 0x%08" PRIx64
+bcm2835_i2s_dreq(const char *dir, bool level) "%s dreq %d"
+bcm2835_i2s_underrun(void) "TX FIFO underrun"
+bcm2835_i2s_overrun(void) "RX FIFO overrun"
+bcm2835_i2s_tx(int32_t ch1, int32_t ch2, uint32_t fifo) "tx 0x%08x 0x%08x fifo %u"
+bcm2835_i2s_rx(int32_t ch1, int32_t ch2, uint32_t fifo) "rx 0x%08x 0x%08x fifo %u"
+bcm2835_i2s_clock_start(uint32_t hz, uint32_t bits) "master bit clock %u Hz, %u bits a frame"
+bcm2835_i2s_clock_stop(void) "master clock stopped"
+bcm2835_i2s_clk(uint32_t hz) "PCM clock %u Hz"
+bcm2835_i2s_host_clock(uint32_t frames, bool master) "host clocked %u frames, master %d"
