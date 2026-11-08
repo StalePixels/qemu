@@ -22,6 +22,11 @@ typedef struct {
     uint32_t nextconbk;
     uint32_t debug;
 
+    /* A control block is loaded and not yet finished */
+    bool cb_loaded;
+    /* Row length of the loaded control block in 2D mode */
+    uint32_t row_len;
+
     qemu_irq irq;
 } BCM2835DMAChan;
 
@@ -29,6 +34,11 @@ typedef struct {
 OBJECT_DECLARE_SIMPLE_TYPE(BCM2835DMAState, BCM2835_DMA)
 
 #define BCM2835_DMA_NCHANS 16
+
+/* Peripheral DREQ lines (TI PERMAP); named GPIO inputs "dreq" */
+#define BCM2835_DMA_NDREQS 32
+#define BCM2835_DMA_DREQ_PCM_TX 2
+#define BCM2835_DMA_DREQ_PCM_RX 3
 
 struct BCM2835DMAState {
     /*< private >*/
@@ -42,6 +52,16 @@ struct BCM2835DMAState {
     BCM2835DMAChan chan[BCM2835_DMA_NCHANS];
     uint32_t int_status;
     uint32_t enable;
+
+    /*
+     * DREQ lines driven by a device model ("dreq-paced" property). The
+     * other lines read as always asserted, so peripherals that do not
+     * drive their DREQ get each control block at once.
+     */
+    uint32_t dreq_paced;
+    uint32_t dreq_level;
+    /* Channels inside bcm2835_dma_update(), to stop re-entry */
+    uint32_t running;
 };
 
 #endif

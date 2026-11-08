@@ -47,3 +47,7 @@ pl330_iomem_read(uint32_t addr, uint32_t data) "addr: 0x%08"PRIx32" data: 0x%08"
 
 # xilinx_axidma.c
 xilinx_axidma_loading_desc_fail(uint32_t res) "error:%u"
+
+# bcm2835_dma.c
+bcm2835_dma_cb(unsigned chan, uint32_t addr, uint32_t ti, uint32_t src, uint32_t dst, uint32_t len) "chan %u cb 0x%08x ti 0x%08x src 0x%08x dst 0x%08x len 0x%x"
+bcm2835_dma_held(unsigned chan, unsigned dreq) "chan %u held by dreq %u"
