@@ -34,7 +34,7 @@
 #include "qemu/log.h"
 #include "system/runstate.h"
 #include "qemu/cutils.h"
-#include "mane/mane.h"
+#include "pinesy/bridge.h"
 
 #ifdef CONFIG_LINUX
 #include <sys/prctl.h>
@@ -56,18 +56,18 @@ static void termsig_handler(int signal, siginfo_t *info, void *c)
 }
 
 /*
- * Set by mane_qemu_run() (system/mane.c). Defined here because this file is
- * also linked into qemu-nbd and qemu-storage-daemon, which do not have
- * system/mane.c.
+ * Set by pinesy_bridge_run() (system/pinesy-bridge.c). Defined here because
+ * this file is also linked into qemu-nbd and qemu-storage-daemon, which do
+ * not have system/pinesy-bridge.c.
  */
-bool mane_embedded;
+bool pinesy_bridge_embedded;
 
 void os_setup_signal_handling(void)
 {
     struct sigaction act;
 
-    /* Inside MaNE, the host process owns SIGINT, SIGHUP and SIGTERM. */
-    if (mane_embedded) {
+    /* Inside Pinesy, the host process owns SIGINT, SIGHUP and SIGTERM. */
+    if (pinesy_bridge_embedded) {
         return;
     }
 

@@ -1,5 +1,6 @@
 /*
- * MaNE: run QEMU inside another process. See include/mane/mane.h.
+ * The Pinesy bridge: run QEMU inside another process.
+ * See include/pinesy/bridge.h.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -10,13 +11,13 @@
 #include "system/replay.h"
 #include "system/runstate.h"
 #include "system/system.h"
-#include "mane/mane.h"
+#include "pinesy/bridge.h"
 
-int mane_qemu_run(int argc, char **argv)
+int pinesy_bridge_run(int argc, char **argv)
 {
     int status;
 
-    mane_embedded = true;
+    pinesy_bridge_embedded = true;
 
     /*
      * Only the process's first thread is an RCU reader by default (rcu_init()
@@ -35,7 +36,7 @@ int mane_qemu_run(int argc, char **argv)
     return status;
 }
 
-void mane_qemu_request_stop(void)
+void pinesy_bridge_request_stop(void)
 {
     qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
 }
