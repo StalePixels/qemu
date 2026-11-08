@@ -146,10 +146,12 @@ static void raspi_peripherals_base_init(Object *obj)
 
     object_property_add_const_link(OBJECT(&s->dma), "dma-mr",
                                    OBJECT(&s->gpu_bus_mr));
-    /* the PCM block drives its DREQ lines; the others read as asserted */
+    /* PCM and SPI drive their DREQ lines; the others read as asserted */
     qdev_prop_set_uint32(DEVICE(&s->dma), "dreq-paced",
                          (1u << BCM2835_DMA_DREQ_PCM_TX) |
-                         (1u << BCM2835_DMA_DREQ_PCM_RX));
+                         (1u << BCM2835_DMA_DREQ_PCM_RX) |
+                         (1u << BCM2835_DMA_DREQ_SPI_TX) |
+                         (1u << BCM2835_DMA_DREQ_SPI_RX));
 
     /* Mphi */
     object_initialize_child(obj, "mphi", &s->mphi, TYPE_BCM2835_MPHI);
@@ -246,6 +248,10 @@ static void bcm2835_peripherals_realize(DeviceState *dev, Error **errp)
     if (!sysbus_realize(SYS_BUS_DEVICE(&s->gpio), errp)) {
         return;
     }
+    /* GPIO 8 is CE0, which Linux drives as a GPIO output ("cs-gpios") */
+    qdev_connect_gpio_out(DEVICE(&s->gpio), 8,
+                          qdev_get_gpio_in_named(DEVICE(&s_base->spi[0]),
+                                                 "cs0-gpio", 0));
     memory_region_add_subregion(
         &s_base->peri_mr, GPIO_OFFSET,
         sysbus_mmio_get_region(SYS_BUS_DEVICE(&s->gpio), 0));
@@ -508,6 +514,12 @@ void bcm_soc_peripherals_common_realize(DeviceState *dev, Error **errp)
                        qdev_get_gpio_in_named(DEVICE(&s->ic),
                                               BCM2835_IC_GPU_IRQ,
                                               INTERRUPT_SPI));
+    qdev_connect_gpio_out_named(DEVICE(&s->spi[0]), "dreq-tx", 0,
+                                qdev_get_gpio_in_named(DEVICE(&s->dma), "dreq",
+                                                     BCM2835_DMA_DREQ_SPI_TX));
+    qdev_connect_gpio_out_named(DEVICE(&s->spi[0]), "dreq-rx", 0,
+                                qdev_get_gpio_in_named(DEVICE(&s->dma), "dreq",
+                                                     BCM2835_DMA_DREQ_SPI_RX));
 
     /* I2C */
     for (n = 0; n < 3; n++) {

@@ -118,6 +118,85 @@ void pinesy_bridge_set_i2s(const PinesyI2SHandlers *handlers, void *opaque);
  */
 void pinesy_bridge_i2s_clock(uint32_t frames);
 
+/*
+ * SPI: a slave on chip select 0 of the Pi's SPI0 master (BCM2835 SPI,
+ * hw/ssi/bcm2835_spi.c), /dev/spidev0.0 in Linux.
+ *
+ * The Pi is the master. For every byte it sends on MOSI the host gives
+ * the byte it receives on MISO. Only bytes sent while chip select 0 is
+ * active go to the host. SPI mode (CPOL, CPHA) and clock rate are not
+ * passed on; bytes go MSB first.
+ *
+ * Chip select 0 is active when the guest drives GPIO 8 (CE0) low as a GPIO
+ * output, which is what Linux does ("cs-gpios" in the device tree), or
+ * while a transfer is active (CS TA) with the native CS field at 0. CS
+ * polarity bits are ignored. select is called on every change, with
+ * selected = true when chip select 0 becomes active.
+ *
+ * Transfers. When the controller has bytes to send (CS TA set, bytes in
+ * the TX FIFO, room for as many in the RX FIFO, and in DMA mode, DLEN not
+ * yet reached), it gives them all to transfer in one call: from 1 to 64
+ * bytes, in the order sent. The host answers with exactly one
+ * pinesy_bridge_spi_reply() call, with as many bytes, MISO byte i being
+ * the byte received while MOSI byte i is sent. Until that answer arrives
+ * the controller sends nothing more: TA stays set, DONE stays clear, the
+ * bytes are not in the RX FIFO, and the DMA requests stay as the FIFO
+ * levels make them. The guest sees a slower slave, never wrong data.
+ * Each MISO byte may depend on all MOSI bytes before it, as on a real
+ * slave, because the host has them all when it answers.
+ *
+ * How long the guest waits. The host can answer inside transfer (the
+ * fastest way: the bytes go into the RX FIFO before the guest's register
+ * access returns), or later from any thread: the answer then schedules a
+ * QEMU bottom half, which puts the bytes in the RX FIFO on the main loop
+ * thread, usually within tens of microseconds. There is no limit in QEMU:
+ * the controller waits for ever. The guest's own limits apply, in its
+ * virtual time, which runs with the host's clock. Linux 6.12 fails a
+ * transfer with ETIMEDOUT after (16000 * length / speed_hz + 200) ms,
+ * speed_hz the speed asked for: a host must answer a whole transfer of
+ * fewer than 400 bytes at 2 MHz within 200 ms. Linux sends a transfer in
+ * one batch per FIFO's worth (up to 64 bytes, in DMA mode about 36), so
+ * it takes about length / 36 answers.
+ *
+ * A transfer stopped before the answer (the guest clears TA, or the
+ * machine resets) still needs its answer; QEMU drops it. Chip select can
+ * change while an answer is owed; the host still answers.
+ *
+ * No handlers set (transfer NULL): chip select 0 behaves as before, the
+ * bytes go to QEMU's own SSI bus, which has no device and reads 0.
+ * Chip selects 1 and 2 always do.
+ *
+ * Threads. select and transfer run on a QEMU thread with QEMU's big lock
+ * held: the vCPU thread during a guest register access, or the main loop
+ * thread (the thread that called pinesy_bridge_run()) from a bottom half
+ * or a DMA transfer. Not on the host's own threads: guard anything they
+ * share with the host. They must return quickly, must not wait for the
+ * host's other threads, and must not call any QEMU function except
+ * pinesy_bridge_spi_reply().
+ */
+typedef struct PinesySPIHandlers {
+    /* Chip select 0 became active (true) or inactive (false). Can be NULL. */
+    void (*select)(void *opaque, bool selected);
+    /* len bytes (1 to 64) the Pi sends; answer with pinesy_bridge_spi_reply */
+    void (*transfer)(void *opaque, const uint8_t *mosi, uint32_t len);
+} PinesySPIHandlers;
+
+/*
+ * Set the SPI handlers and their opaque argument. QEMU copies *handlers.
+ * Call it before pinesy_bridge_run(), on the thread that then calls it.
+ */
+void pinesy_bridge_set_spi(const PinesySPIHandlers *handlers, void *opaque);
+
+/*
+ * Answer the last transfer call: len MISO bytes, len equal to that call's
+ * len. QEMU copies the bytes before it returns. Safe from any thread,
+ * including from inside transfer, and takes no lock. Call it once per
+ * transfer call, and only between the start and the end of
+ * pinesy_bridge_run(). A shorter answer is padded with 0xff and logged as
+ * a guest error.
+ */
+void pinesy_bridge_spi_reply(const uint8_t *miso, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif

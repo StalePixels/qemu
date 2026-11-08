@@ -56,10 +56,12 @@ OBJECT_DECLARE_SIMPLE_TYPE(BCM2835SPIState, BCM2835_SPI)
 #define BCM2835_SPI_CS_REN      BIT(12)
 #define BCM2835_SPI_CS_INTR     BIT(10)
 #define BCM2835_SPI_CS_INTD     BIT(9)
+#define BCM2835_SPI_CS_ADCS     BIT(11)
 #define BCM2835_SPI_CS_DMAEN    BIT(8)
 #define BCM2835_SPI_CS_TA       BIT(7)
 #define BCM2835_SPI_CLEAR_RX    BIT(5)
 #define BCM2835_SPI_CLEAR_TX    BIT(4)
+#define BCM2835_SPI_CS_CS       0x3
 
 struct BCM2835SPIState {
     /* <private> */
@@ -78,4 +80,31 @@ struct BCM2835SPIState {
 
     Fifo8 tx_fifo;
     Fifo8 rx_fifo;
+
+    /* DMA requests: "dreq-tx" and "dreq-rx" GPIO outputs, and their level */
+    qemu_irq dreq_tx;
+    qemu_irq dreq_rx;
+    bool dreq_tx_level;
+    bool dreq_rx_level;
+    QEMUBH *dreq_bh;
+
+    /*
+     * Level of the CE0 pin when the guest drives it as a GPIO output
+     * (named GPIO input "cs0-gpio", connected to GPIO 8). High at reset.
+     */
+    bool cs0_gpio;
+    /* Last chip select 0 state given to the Pinesy bridge host */
+    bool cs0_selected;
+
+    /*
+     * Bytes sent to the Pinesy bridge host and not yet answered. While
+     * this is non-zero the shifter is busy.
+     */
+    uint32_t host_pending;
+    /* Drop the answer to host_pending: the transfer was stopped (TA = 0) */
+    bool host_discard;
+    /* The host's answer, written by any thread, then host_ready is set */
+    uint8_t host_reply[FIFO_SIZE];
+    uint32_t host_ready;
+    QEMUBH *host_bh;
 };
