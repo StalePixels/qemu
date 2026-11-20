@@ -34,6 +34,31 @@ void pinesy_bridge_request_stop(void);
 extern bool pinesy_bridge_embedded;
 
 /*
+ * Debugging: the Pi stopped and waiting.
+ *
+ * The Pi waits when it has not started yet because of -S, or when QEMU's
+ * GDB stub has stopped it: a client connected, or the Pi stopped at a
+ * breakpoint, a step or an interrupt from the client. It waits until a
+ * GDB client or pinesy_bridge_continue() continues it.
+ */
+
+/*
+ * True while the Pi waits. Safe from any thread, and takes no lock. False
+ * before QEMU's main loop starts and after it ends.
+ */
+bool pinesy_bridge_waiting(void);
+
+/*
+ * Continue the Pi if it waits, as GDB's continue command does. Safe from
+ * any thread, and takes no lock: it schedules a QEMU bottom half, which
+ * starts the Pi on QEMU's main loop thread, with the big lock, soon after.
+ * A GDB client that has the Pi stopped is not told that it runs. Returns
+ * pinesy_bridge_waiting() at the time of the call. Does nothing, and
+ * returns false, outside QEMU's main loop.
+ */
+bool pinesy_bridge_continue(void);
+
+/*
  * I2S audio: the Pi's PCM block (BCM2835 PCM/I2S, hw/audio/bcm2835_i2s.c).
  *
  * TX is PCM_DOUT, the Pi sending to the host. RX is PCM_DIN, the host
